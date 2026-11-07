@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="拼写练习"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>拼写练习 · 体验版</title>
 <style>
 :where(:root){--ground:#fbfaf7;--card:#ffffff;--ink:#1f1f1c;--muted:#6b6a64;--rule:#dcd9d0;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,sans-serif;--serif:Georgia,"Songti SC",serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
@@ -110,6 +110,7 @@ ol.steps li{margin:4px 0}
 <body><div class="wrap">
 <h1>拼写练习 · 体验版</h1>
 <p class="kicker">体验包 1：一个音，几种写法 · 美式发音 · 不联网也能用</p>
+<div id="iosWarn" class="warn" hidden>iPad、iPhone 请这样用：点 Safari 的“分享”按钮，选“添加到主屏幕”，以后都点主屏幕上的图标打开。直接在 Safari 里打开的话，7 天不用，记录可能会被 Safari 自动清掉。</div>
 <div id="storeWarn" class="warn" hidden>这个浏览器存不了记录（可能是无痕模式）。请换成普通模式，或换一个浏览器打开，否则关掉页面记录就没了。</div>
 
 <section id="welcome" hidden>
@@ -132,7 +133,7 @@ ol.steps li{margin:4px 0}
 <section id="calib" hidden>
   <div class="panel">
     <h2>开始前，先试一下声音和打字</h2>
-    <p class="small">这一步不算分，只做一次，大约 1 分钟。用来确认三件事：这台设备能放出声音、音量合适、孩子会用页面上的字母键盘打字。后面的测试和练习都要靠这两样。</p>
+    <p class="small">这一步不算分，只做一次，大约 1 分钟。用来确认三件事：这台设备能放出声音、音量合适、孩子会用页面上的字母键盘打字。后面的测试和练习都要用到声音和打字。</p>
     <p><b>1. 声音：</b>点“播放”，应该听到英文单词 <b style="font-family:var(--mono)">cat</b>（猫）。把音量调到孩子听得清、不刺耳，再点“听到了”。</p>
     <div class="row"><button class="b main" id="calPlay">🔊 播放</button><button class="b" id="calHeard">听到了</button><button class="b ghost" id="calNo">没听到</button></div>
     <p class="small" id="calAudioMsg"></p>
@@ -252,7 +253,9 @@ let S,canSave=true;
 function code(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const a=new Uint8Array(6);try{crypto.getRandomValues(a)}catch(e){for(let i=0;i<6;i++)a[i]=Math.random()*256}return [...a].map(x=>c[x%c.length]).join('')}
 function blank(){return {v:1,pack:PACK.id,id:code(),created:Date.now(),consent:null,calib:null,settings:{memo:false},memoLog:[],phase:'pre',tests:{},practiceEnd:null,place:{},fam:{},words:{},log:[],sessions:[],conf:{},rep:{},dev:0}}
 function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||typeof S!=='object'||S.pack!==PACK.id)S=blank();migrate();
-  try{localStorage.setItem(KEY+'-t','1');localStorage.removeItem(KEY+'-t')}catch(e){canSave=false}$('#storeWarn').hidden=canSave;}
+  try{localStorage.setItem(KEY+'-t','1');localStorage.removeItem(KEY+'-t')}catch(e){canSave=false}$('#storeWarn').hidden=canSave;
+  /* Safari 网页 7 天不用会清掉记录；添加到主屏幕的不受影响 */
+  const ios=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);$('#iosWarn').hidden=!(ios&&location.protocol.startsWith('http')&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches);}
 /* 旧版本的记录：练习档位从 3 档（音块/单音节/多音节）换成 5 档（音块 + 家族内 4 档） */
 function migrate(){if(!Array.isArray(S.recent))S.recent=[];if(!Array.isArray(S.carry))S.carry=[];if(Array.isArray(S.pend)&&S.pend.length){S.pend.forEach(w=>{if(!S.carry.includes(w))S.carry.push(w)});S.carry=S.carry.slice(-6)}S.pend=[];S.abFam=S.pendAb||null;S.pendAb=null;const m=[0,1,3];Object.values(S.fam||{}).forEach(fs=>{if(fs.v!==2){fs.layer=m[fs.layer]??1;fs.pos=[0,0,0,0,0];fs.run=0;fs.v=2}});
   Object.values(S.place||{}).forEach(p=>{if(p.v!==2){p.layer=m[p.layer]??1;p.v=2}})}
@@ -453,8 +456,8 @@ function renderPlay(){const c=cur;if(!c)return;const F=FAM[c.fam];const ti=c.kin
   $('#play').dataset.stage=c.stage;
   /* 提示条：用了几级提示（不是进度） */
   const nh=c.kind==='p'?2:4,on=c.stage==='fix'?1:c.stage==='re'?0:Math.min(c.lvl,nh);
-  const cap=c.stage==='done'?(c.lvl===0?'没用提示':'用过提示'):c.stage==='re'?'提示全撤掉':c.stage==='fix'?'提示撤掉一半':c.lvl===0?'还没用提示':(c.kind==='p'?['','给首字母','选一选'][c.lvl]:LV[c.lvl]);
-  $('#ladder').innerHTML=`<span class="lab">用了提示</span>${Array.from({length:nh},(_,i)=>`<i class="${i<on?'on':''}"></i>`).join('')}<span class="cap">${cap}</span>`;
+  const cap=c.stage==='done'?(c.lvl===0?'没用':'用过'):c.stage==='re'?'全撤掉了':c.stage==='fix'?'撤掉一半':c.lvl===0?'还没用':(c.kind==='p'?['','给首字母','选一选'][c.lvl]:LV[c.lvl]);
+  $('#ladder').innerHTML=`<span class="lab">提示</span>${Array.from({length:nh},(_,i)=>`<i class="${i<on?'on':''}"></i>`).join('')}<span class="cap">${cap}</span>`;
   $('#sessInfo').textContent=sess.t==='drill'?`专练 ${Math.min(sess.n,sess.N)}/${sess.N}`:`这一组 ${Math.min(sess.n,SESSION_N)}/${SESSION_N}`;
   $('#pr').innerHTML=promptHTML();$('#msg').textContent='';$('#tips').innerHTML='';
   if(c.stage==='done'){renderDone();mountVK();return}
@@ -635,7 +638,7 @@ function renderParent(){const P=phaseInfo();let h='';
   // 练习情况
   const L=S.log.filter(r=>r.k==='w');const hinted=L.filter(r=>!r.pure);const reok=hinted.filter(r=>r.re==='ok').length;const mc=L.filter(r=>r.mc).length;const ag=L.filter(r=>r.ag);
   h+=`<h3>练习情况</h3><table class="tbl"><tr><td>写词次数</td><td>${L.length}</td></tr><tr><td>没用提示一次写对</td><td>${L.filter(r=>r.pure).length}</td></tr><tr><td>用了提示后，撤掉提示自己重写对</td><td>${reok} / ${hinted.length}</td></tr><tr><td>用到“选一选”的</td><td>${mc}</td></tr><tr><td>提示撤到一半，先看了正确写法</td><td>${L.filter(r=>r.fx&&r.fx!=='ok'||r.re==='give').length}</td></tr><tr><td>隔几个词再考一次，自己写对</td><td>${ag.filter(r=>r.pure).length} / ${ag.length}</td></tr></table>`;
-  if(Object.keys(S.place).length)h+=`<p class="small">前测后的起点：${Object.entries(S.place).map(([f,p])=>`${FAM[f].name} ${startName(f,p.layer)}（前测 ${p.correct}/${p.of}${p.answered!==undefined&&p.answered<p.of?`，跳过的 ${p.of-p.answered} 个不算`:''}），现在练到“${startName(f,famState(f).layer).replace(/^从|开始$/g,'')}”`).join('；')}</p>`;
+  if(Object.keys(S.place).length)h+=`<p class="small">前测后的起点：${Object.entries(S.place).map(([f,p])=>`${FAM[f].name} ${startName(f,p.layer)}（前测 ${p.correct}/${p.of}${p.answered!==undefined&&p.answered<p.of?`，跳过的 ${p.of-p.answered} 个不算`:''}），现在练到${startName(f,famState(f).layer).replace(/^从|开始$/g,'')}`).join('；')}</p>`;
   // 掌握地图
   const st=patStates();h+=`<h3>掌握地图</h3><p class="small">只有孩子不靠提示自己写对才算数，选一选选对的不算。规则：独立写对 2 次为“初步掌握”；隔天还写对、并且能写对没练过的同规律新词，为“稳定掌握”。</p>`;
   FAMS.forEach(F=>{const ps=PACK.pats.filter(p=>p.f===F.id);h+=`<p style="margin:10px 0 2px"><b>${esc(F.name)}</b>${F.role==='control'&&S.phase!=='done'?' <span class="small">对照，只测不练</span>':''}</p><div class="chips">${ps.map(p=>{const s=st[p.id];return `<span class="chip st${s.st}" title="${esc(p.ex.join(', '))}">${esc(p.g)} · ${STN[s.st]}</span>`}).join('')}</div>`});
